@@ -4,7 +4,8 @@ use timeout_readwrite::TimeoutReader;
 use std::io::Write;
 use std::io;
 use colored::*;
-use crate::core::GameState; 
+use crate::core::GameState;
+use crate::{guessed, update}; 
 
 pub fn begin_display(initial_state: &mut GameState) {
     // let (tx, rx): (Sender<&mut GameState>, Receiver<&mut GameState>) = channel();
@@ -19,15 +20,14 @@ pub fn begin_display(initial_state: &mut GameState) {
 
             let start = Instant::now();
 
-            let result = BufReader::new(TimeoutReader::new(io::stdin(), Duration::from_secs(12)));
+            let result = BufReader::new(TimeoutReader::new(io::stdin(), Duration::from_secs(3)));
             let lines = result.lines();
             for line in lines {
-                let gathered = line.unwrap_or_else(|_| {
-                    state.error("No valid input found.".to_string());
-                    String::new()
-                });
+                let gathered = line.unwrap_or(String::new());
 
-                // core.guess(gathered);
+                if !guessed(state, gathered) {
+                    state.current_err = "Not a valid guess.".to_string();
+                }
 
                 let elapsed = start.elapsed().as_secs();
                 state.time -= elapsed as i32;
@@ -40,7 +40,7 @@ pub fn begin_display(initial_state: &mut GameState) {
             state.time -= 1;
         }
 
-        // core.look_for_updates();
+        update(&mut state);
     }
 }
 pub fn write_display(state: &GameState) { /* I never want to look at this method again */
