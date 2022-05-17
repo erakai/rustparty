@@ -8,7 +8,6 @@ use crate::core::GameState;
 use crate::{guessed, update}; 
 
 pub fn begin_display(initial_state: &mut GameState) {
-    // let (tx, rx): (Sender<&mut GameState>, Receiver<&mut GameState>) = channel();
     let mut state = initial_state;
 
     while state.running {

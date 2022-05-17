@@ -3,8 +3,7 @@ mod connection;
 mod display;
 
 use crate::core::*;
-use crate::connection::client;
-use crate::connection::server;
+use crate::connection::server::Server;
 
 pub fn run_test() {
     /* 
@@ -30,8 +29,12 @@ pub fn run_test() {
     */
 }
 
-pub fn run_game(is_client: bool, domain: String, port: usize) {
-    // do some kind of connection thingy
+pub fn run_server(port: usize) {
+    Server::begin(port);
+}
+
+pub fn run_client(ip: String, port: usize) {
+
 }
 
 pub fn guessed(state: &mut GameState, guess: String) -> bool {

@@ -28,14 +28,30 @@ pub struct PlayerInfo {
 
 #[derive(Serialize, Deserialize)]
 pub struct OutgoingUpdate {
-    pub lives: Option<i32>,
-    pub last_guess: Option<String>,
+    pub id: i32,
+    pub lives: i32,
+    pub last_guess: String,
+}
+
+impl OutgoingUpdate {
+    pub fn to_incoming_update(update: OutgoingUpdate, current_turn: usize, player_count: usize) -> IncomingUpdate {
+        let turn = if current_turn == player_count { Some(1 as i32) } else { Some((current_turn + 1) as i32) };
+        IncomingUpdate { updated_player: Some(OutgoingUpdate::to_player_info(&update)),
+                        new_used_word: Some(update.last_guess.clone()),
+                        prompt: Some(generate_prompt()),
+                        turn,
+                        time: Some(1) }
+    }
+
+    pub fn to_player_info(update: &OutgoingUpdate) -> PlayerInfo {
+        PlayerInfo { id: update.id, lives: update.lives, last_guess: update.last_guess.clone() }
+    }
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct IncomingUpdate {
-    pub other_players: Option<Vec<PlayerInfo>>, 
-    pub new_used_words: Option<Vec<String>>,
+    pub updated_player: Option<PlayerInfo>, 
+    pub new_used_word: Option<String>,
     pub prompt: Option<String>,
     pub turn: Option<i32>,
     pub time: Option<i32>,
@@ -48,7 +64,7 @@ impl GameState {
                     turn: -1,
                     lives: STARTING_LIVES, 
                     time: -1, 
-                    current_err: String::new(),
+                    current_err: String::from("Waiting for server host to start game..."),
                     prompt: String::new(),
                     last_guess: String::new(),
                     rem_letters: String::from("abcdefghijklmnopqrstuvwxyz"),
@@ -58,19 +74,26 @@ impl GameState {
     }
 
     pub fn generate_update(&self) -> OutgoingUpdate {
-        OutgoingUpdate { lives: Some(self.lives), 
-                         last_guess: Some(self.last_guess.clone()),
+        OutgoingUpdate { id: self.id, lives: self.lives, 
+                         last_guess: self.last_guess.clone(),
         }
     }
 
     pub fn update(&mut self, update: IncomingUpdate) {
-        self.other_players = update.other_players.unwrap();
+        let updated_player = update.updated_player.unwrap();
+        for player in &mut self.other_players {
+            if player.id == updated_player.id {
+                player.lives = updated_player.lives;
+                player.last_guess = updated_player.last_guess.clone()
+            }
+        } 
+
         self.prompt = update.prompt.unwrap();
         self.time = update.time.unwrap();
         self.turn = update.turn.unwrap();
         
-        if !update.new_used_words.is_none() {
-            self.used_words.append(&mut update.new_used_words.unwrap());
+        if !update.new_used_word.is_none() {
+            self.used_words.push(update.new_used_word.unwrap());
         }
     }
 
@@ -87,6 +110,9 @@ impl GameState {
             self.check_for_extra_life();
             self.time = 0;
             self.lives += 1; /* We just remove a life every time the time hits 0 */
+        } else {
+            self.current_err = String::from("Invalid guess! ");
+            self.current_err.push_str(if guess.contains(&self.prompt) { "Already used!" } else { "Where's the prompt?" });
         }
 
         valid
@@ -110,4 +136,8 @@ impl GameState {
     pub fn run(&mut self) {
         self.running = true;
     }
+}
+
+fn generate_prompt() -> String {
+    "lol".to_string()
 }
