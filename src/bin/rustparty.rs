@@ -1,6 +1,5 @@
 use std::env;
 use std::process;
-use std::{thread, time::Duration};
 
 use rustparty::*;
 use colored::Colorize;
@@ -37,17 +36,17 @@ impl Config {
 }
 
 fn main() {
-    println!("Beginning rustparty...");
-    thread::sleep(Duration::from_secs(3)); 
-
     let args: Vec<String> = env::args().collect();
 
     let config = Config::new(&args).unwrap_or_else(|e| {
-        eprintln!("Argument Error: {}. Please either run \"{}\" or \"{}\"", 
-                 e, "\"rustparty host <port>\"".to_string().yellow().bold(), 
-                 "\"rustparty join <ip> <port>\"".to_string().yellow().bold());
+        eprintln!("Argument Error: {}. Please either run \"{}\" or \"{}\".", 
+                 e, "rustparty host <port>".to_string().yellow().bold(), 
+                 "rustparty join <ip> <port>".to_string().yellow().bold());
         process::exit(1);
     });
+
+    println!("Beginning rustparty...");
+    // thread::sleep(Duration::from_millis(1500)); 
 
     rustparty(config);
 }

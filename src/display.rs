@@ -5,17 +5,15 @@ use std::io::Write;
 use std::io;
 use colored::*;
 use crate::core::GameState;
-use crate::{guessed, update}; 
 
-pub fn begin_display(initial_state: &mut GameState) {
+pub fn begin_display(initial_state: GameState) {
     let mut state = initial_state;
-
-    while state.running {
+    loop {
         let current_turn = state.turn == state.id;
 
         if current_turn {
             clean();
-            write_display(state);
+            write_display(&mut state);
 
             let start = Instant::now();
 
@@ -24,7 +22,7 @@ pub fn begin_display(initial_state: &mut GameState) {
             for line in lines {
                 let gathered = line.unwrap_or(String::new());
 
-                if !guessed(state, gathered) {
+                if !state.check_guess( gathered) {
                     state.current_err = "Not a valid guess.".to_string();
                 }
 
@@ -34,12 +32,16 @@ pub fn begin_display(initial_state: &mut GameState) {
             }
         } else {
             clean();
-            write_display(state);
+            write_display(&mut state);
             thread::sleep(Duration::from_secs(1));
             state.time -= 1;
         }
 
-        update(&mut state);
+        state.update();
+
+        if !state.running {
+            break;
+        }
     }
 }
 pub fn write_display(state: &GameState) { /* I never want to look at this method again */
@@ -47,7 +49,7 @@ pub fn write_display(state: &GameState) { /* I never want to look at this method
     let current_turn = state.turn == state.id;
         
     dis.push_str(&format!("|You are Player {}!\n|\n|\
-                   Prompt: \"{}\"\n|\n|", state.id.to_string().bold().blue(), state.prompt.underline()));
+                   Prompt: \"{}\"\n|\n|", state.id.to_string().bold().cyan(), state.prompt.underline()));
    
     dis.push_str(&format!("  ---{}---    ", state.lives)); 
     for player in &state.other_players {
@@ -58,10 +60,10 @@ pub fn write_display(state: &GameState) { /* I never want to look at this method
     dis.push_str(&("|     |    ".repeat(state.other_players.len() + 1) + "\n|"));
 
     let surround = if current_turn { "#".green() } else { "#".white() };
-    dis.push_str(&format!("  | {}{}{} |    ", surround, state.id.to_string().bold().blue(), surround)); 
+    dis.push_str(&format!("  | {}{}{} |    ", surround, state.id.to_string().bold().cyan(), surround)); 
     for player in &state.other_players {
         let surround = if state.turn == player.id { "#".green() } else { "#".white() };
-        dis.push_str(&format!("| {}{}{} |    ", surround, player.id.to_string().bold().cyan(), surround)); 
+        dis.push_str(&format!("| {}{}{} |    ", surround, player.id.to_string().bold(), surround)); 
     }
 
     dis.push_str("\n|  ");

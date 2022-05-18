@@ -3,6 +3,7 @@ use crate::connection::client::Client;
 
 pub const STARTING_LIVES: i32 = 2;
 pub const MAX_LIVES: i32 = 3;
+pub const TURN_LENGTH: i32 = 12;
 
 pub struct GameState {
     pub id: i32,
@@ -58,7 +59,7 @@ pub struct IncomingUpdate {
 }
 
 impl GameState {
-    pub fn new(id: i32, client: Client) -> GameState {
+    pub fn new(id: i32, client: Client, other_players: Vec<PlayerInfo>) -> GameState {
         GameState { id, 
                     running: false,
                     turn: -1,
@@ -68,18 +69,18 @@ impl GameState {
                     prompt: String::new(),
                     last_guess: String::new(),
                     rem_letters: String::from("abcdefghijklmnopqrstuvwxyz"),
-                    other_players: Vec::new(),
+                    other_players,
                     used_words: Vec::new(),
                     client, }
     }
 
-    pub fn generate_update(&self) -> OutgoingUpdate {
+    pub fn generate_outgoing_update(&self) -> OutgoingUpdate {
         OutgoingUpdate { id: self.id, lives: self.lives, 
                          last_guess: self.last_guess.clone(),
         }
     }
 
-    pub fn update(&mut self, update: IncomingUpdate) {
+    pub fn integrate_incoming_update(&mut self, update: IncomingUpdate) {
         let updated_player = update.updated_player.unwrap();
         for player in &mut self.other_players {
             if player.id == updated_player.id {
@@ -134,7 +135,23 @@ impl GameState {
     }
 
     pub fn run(&mut self) {
+        self.error(String::from("Started!"));
         self.running = true;
+        self.time = TURN_LENGTH; 
+    }
+
+    pub fn update(&mut self) {
+        let mut outgoing: Option<OutgoingUpdate> = None;
+
+        if self.time <= 0 {
+            if self.turn == self.id {
+                self.lives -= 1;
+                outgoing = Some(self.generate_outgoing_update());
+            }
+
+            let incoming = self.client.send_retrieve_update(outgoing);
+            self.integrate_incoming_update(incoming);
+        } 
     }
 }
 
