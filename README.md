@@ -5,10 +5,24 @@ A networked, CLI version of the online game Bombparty written entirely in Rust. 
 The original game is located [here](https://jklm.fun).
 ## Installation
 
-Currently rustparty is only supported for UNIX systems.
-> Windows users can install through WSL2.0. Installation can be found [here](https://docs.microsoft.com/en-us/windows/wsl/install)
+> rustparty is not tested on Windows. If not functional, try WSL. Installation can be found [here](https://docs.microsoft.com/en-us/windows/wsl/install).
+
+To install, just download the binary and add it to your path. For example:
+
+### Oh My Zsh
+`mkdir ~/.rustparty/`
+
+`curl https://github.com/erakai/rustparty/blob/main/target/release/rustparty?raw=true >> ~/.rustparty/rustparty`
+
+`export PATH=~/.rustparty/:$PATH`
+
+### 
 
 ## Contributors
 - Kai Tinkess
 
 ## Screenshots
+
+![2players](screenshots/2players.png)
+![5players](screenshots/5players.png)
+![server](screenshots/server.png)

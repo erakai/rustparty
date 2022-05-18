@@ -1,5 +1,7 @@
 use std::env;
 use std::process;
+use std::thread;
+use std::time::Duration;
 
 use rustparty::*;
 use colored::Colorize;
@@ -46,7 +48,7 @@ fn main() {
     });
 
     println!("Beginning rustparty...");
-    // thread::sleep(Duration::from_millis(1500)); 
+    thread::sleep(Duration::from_millis(1500)); 
 
     rustparty(config);
 }

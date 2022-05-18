@@ -19,7 +19,7 @@ impl Worker {
     fn new(id: usize, mut stream: TcpStream, sender: Sender<String>,
             receiver: Receiver<String>) -> Worker {
         thread::spawn(move ||  {
-            stream.set_read_timeout(Some(Duration::from_millis(TIMEOUT_MILLIS))).expect("Setting timeout failed");
+            stream.set_read_timeout(Some(Duration::from_millis(TIMEOUT_MILLIS / 2))).expect("Setting timeout failed");
             stream.write(&id.to_string().as_bytes()).expect("Failed to properly send id");
 
             let prompts = core::generate_prompts();
