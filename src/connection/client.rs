@@ -1,8 +1,10 @@
-use std::str;
+use std::{str, thread};
 use std::net::TcpStream;
 use std::io::{Read, Write};
+use std::time::Duration;
 
 use colored::Colorize;
+use crate::connection::server::TIMEOUT_MILLIS;
 use crate::{core::*, connection::server};
 
 
@@ -15,13 +17,15 @@ impl Client {
         match TcpStream::connect(format!("{}:{}", ip, port)) {
             Ok(mut stream) => {
                 println!("{}", format!("Connected to {}:{}!", ip, port).green());
-                println!("Waiting on the server host to begin the game..."); 
+
+                thread::sleep(Duration::from_millis(500));
 
                 let mut buffer = [0 as u8; server::BUFFER_SIZE];
                 let size = stream.read(&mut buffer).expect("Failed to receive id.");
                 let id = str::from_utf8(&buffer[0..size]).unwrap().parse().unwrap();
                 println!("You are Player #{}!", id);
 
+                println!("\nWaiting on the server host to begin the game..."); 
                 buffer = [0 as u8; server::BUFFER_SIZE];
                 let size = stream.read(&mut buffer).expect("Failed to receive player count.");
                 let player_count = str::from_utf8(&buffer[0..size]).unwrap().parse().unwrap();
@@ -35,6 +39,7 @@ impl Client {
                                                     last_guess: String::new() })
                 }
 
+                stream.set_read_timeout(Some(Duration::from_millis(TIMEOUT_MILLIS))).expect("Setting timeout failed");
                 let client = Client { stream };
 
                 GameState::new(id, client, other_players)
@@ -43,7 +48,7 @@ impl Client {
         }
     }
 
-    pub fn send_retrieve_update(&mut self, update: Option<OutgoingUpdate>) -> IncomingUpdate {
+    pub fn send_retrieve_update(&mut self, update: Option<OutgoingUpdate>) -> Option<IncomingUpdate> {
         if !update.is_none() {
             let update = update.unwrap();
             let serialized = serde_json::to_string(&update).unwrap();
@@ -51,7 +56,11 @@ impl Client {
         }
         
         let mut buffer = [0 as u8; server::BUFFER_SIZE];
-        let size = self.stream.read(&mut buffer).expect("Failed to receive IncomingUpdate");
-        serde_json::from_str(str::from_utf8(&buffer[0..size]).unwrap()).unwrap()
+        let size = self.stream.read(&mut buffer).unwrap_or(usize::MAX);
+        if size == usize::MAX {
+            return None
+        }
+
+        Some(serde_json::from_str(str::from_utf8(&buffer[0..size]).unwrap()).unwrap())
     }
 }

@@ -39,7 +39,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     let config = Config::new(&args).unwrap_or_else(|e| {
-        eprintln!("Argument Error: {}. Please either run \"{}\" or \"{}\".", 
+        eprintln!("Argument Error: {}.\nPlease either run \"{}\" or \"{}\".", 
                  e, "rustparty host <port>".to_string().yellow().bold(), 
                  "rustparty join <ip> <port>".to_string().yellow().bold());
         process::exit(1);

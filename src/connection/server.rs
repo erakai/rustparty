@@ -7,9 +7,9 @@ use crossbeam_channel::{unbounded, Sender, Receiver};
 
 use colored::Colorize;
 
-use crate::core::OutgoingUpdate;
+use crate::core;
 
-pub const BUFFER_SIZE: usize = 200;
+pub const BUFFER_SIZE: usize = 400;
 pub const TIMEOUT_MILLIS: u64 = 250;
 
 
@@ -22,8 +22,9 @@ impl Worker {
             stream.set_read_timeout(Some(Duration::from_millis(TIMEOUT_MILLIS))).expect("Setting timeout failed");
             stream.write(&id.to_string().as_bytes()).expect("Failed to properly send id");
 
+            let prompts = core::generate_prompts();
             let player_count: usize = receiver.recv().unwrap().parse().unwrap();    
-            let mut current_turn = 1;
+            let mut current_turn = 0;
             
             println!("Thread #{} is sending player count of {}.", id, player_count);
             stream.write(player_count.to_string().as_bytes()).expect("Failed to send Player Count to clients");
@@ -32,27 +33,36 @@ impl Worker {
             loop {
                 match stream.read(&mut buffer) {
                     Ok(size) => {
-                        let received = str::from_utf8(&buffer[0..size]).unwrap();
-                        println!("\nThread #{} received data: {}", id, received);
+                        let packet = str::from_utf8(&buffer[0..size]).unwrap().to_string();
+                        println!("\nThread #{} (current_turn: {}) received data: {}", id, current_turn, packet);
+
+                        current_turn += 1;
+                        if current_turn == player_count {
+                            current_turn = 0;
+                        }
+
+                        let deserialized: core::OutgoingUpdate = serde_json::from_str(&packet).unwrap();
+                        let new_update = core::OutgoingUpdate::to_incoming_update(deserialized, current_turn, &prompts);
+                        let string = serde_json::to_string(&new_update).unwrap();
 
                         for _ in 0..player_count {
-                            sender.send(received.to_string()).unwrap();
+                            sender.send(string.clone()).unwrap();
                         }
-                        
-                        current_turn += 1;
                     },
                     Err(_) => {}
                 }
-                let received = receiver.recv_timeout(Duration::from_millis(TIMEOUT_MILLIS)).unwrap();     
+                let string = receiver.recv_timeout(Duration::from_millis(TIMEOUT_MILLIS)).unwrap_or("None".to_string());      
+                let received = if string == "None" { None } else { Some(string) };
 
-                let deserialized: OutgoingUpdate = serde_json::from_str(&received).unwrap();
-                let new_update = OutgoingUpdate::to_incoming_update(deserialized, current_turn, player_count);
+                if !received.is_none() {
+                    let received = received.unwrap();
 
-                let string = serde_json::to_string(&new_update).unwrap();
-                println!("\nID: {} Sending data: {}", id, string);
-                stream.write(&string.as_bytes()).expect("Failed to write correctly");
+                    let deserialized: core::IncomingUpdate = serde_json::from_str(&received).unwrap();
+                    current_turn = deserialized.turn.unwrap() as usize;
 
-                current_turn += 1;
+                    println!("  ID: {} is sending data: {}", id, received);
+                    stream.write(&received.as_bytes()).expect("Failed to write correctly");
+                }
             }
         });
         Worker { }
@@ -80,12 +90,13 @@ impl Server {
             if server.threads.len() >= 2 {
                 let mut input = String::new();
 
-                print!("\nWould you like to begin the game (y/n)? >");
+                print!("\nWould you like to begin the game (y/n)? > ");
                 io::stdout().flush().unwrap();
                 io::stdin().read_line(&mut input).expect("Failed to receive input");
 
                 match input.trim().to_lowercase().as_str() {
                     "y" => break,
+                    "n" => println!("Waiting for more players...\n"),
                     _ => println!("Assuming that's a no...\n"),
                 }
             }
@@ -95,7 +106,7 @@ impl Server {
         server.run();
 
         let mut input = String::new();
-        println!("{}", format!("Press enter to close the server at any point.\n\n").bold().red());
+        println!("{}", format!("Press enter to close the server at any point.\n").bold().red());
         io::stdout().flush().unwrap();
         io::stdin().read_line(&mut input).expect("Failed to receive input");
     }
@@ -110,7 +121,7 @@ impl Server {
     }
 
     pub fn run(&self) {
-        println!("{}", format!("Starting server with player count {}...", self.threads.len()).green());
+        println!("{}", format!("Starting server with {} players...", self.threads.len()).green());
         for _ in 0..self.threads.len() {
             self.sender.send(self.threads.len().to_string()).unwrap();
         }
