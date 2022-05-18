@@ -7,14 +7,17 @@ The original game is located [here](https://jklm.fun).
 
 > rustparty is not tested on Windows. If not functional, try WSL. Installation can be found [here](https://docs.microsoft.com/en-us/windows/wsl/install).
 
-To install, just download the binary and add it to your path. For example:
+To install, just download the binary and add it to your path. The binary is located both in the release. For example:
 
-### Oh My Zsh
 `mkdir ~/.rustparty/`
 
-`curl https://github.com/erakai/rustparty/blob/main/target/release/rustparty?raw=true >> ~/.rustparty/rustparty`
+`curl https://github.com/erakai/rustparty/releases/download/1.0/rustparty >> ~/.rustparty/rustparty`
 
-`export PATH=~/.rustparty/:$PATH`
+`chmod +x ~/.rustparty/rustparty`
+
+`export PATH=~/.rustparty:$PATH`
+
+Alternatively, download rust, clone this repo, and run `cargo build --release` to generate the binary manually.
 
 ### 
 
